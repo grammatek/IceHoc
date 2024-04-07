@@ -12,7 +12,7 @@ We focus only on a specific "area" of tokens surrounding the homograph itself. T
 `--around` parameter. We use the **CLS** token embedding as feature input and additionally, we incorporate the homograph
 word embedding itself as input features for the classifier. To accommodate for variations of word embedding size, we
 average the word embedding vectors as a dimensionality reduction technique, which performs in our experiments
-significantly better than simply padding smaller vectors with 0 or using dimensionality reduction via SVG.
+significantly better than simply padding smaller vectors with 0 or using dimensionality reduction via SVD.
 
 To summarize our changes:
 
