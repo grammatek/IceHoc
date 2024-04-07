@@ -7,13 +7,22 @@ ISCA Speech Synthesis Workshop (SSW 11), 222-226, doi: 10.21437/SSW.2021-39`, ut
 
 However, it introduces some distinct modifications:
 
-We employ logistic regression on embeddings produced by a transformer model to classify homographs. In line with the
-suggestions from the referenced paper, we use the **CLS** token embedding. Additionally, we incorporate the homograph
-word embedding itself as input features for the classifier. Moreover, we focus only on a specific "area" of tokens
-surrounding the homograph. This is configurable for training via the `--around` parameter.
+We employ logistic regression on embeddings produced by a transformer model to classify homographs.
+We focus only on a specific "area" of tokens surrounding the homograph itself. This is configurable for training via the
+`--around` parameter. We use the **CLS** token embedding as feature input and additionally, we incorporate the homograph
+word embedding itself as input features for the classifier. To accommodate for variations of word embedding size, we
+average the word embedding vectors as a dimensionality reduction technique, which performs in our experiments
+significantly better than simply padding smaller vectors with 0 or using dimensionality reduction via SVG.
+
+To summarize our changes:
+
+- only one classifier model for all homographs
+- average all homograph word embeddings to one feature vector
+- additionally use the CLS token as feature vector and combine it with the homograph feature vector
 
 Using this approach, we achieve state-of-the-art results in homograph classification for Icelandic when combined with
-the **ConvBert** or **LaBSE** models.
+the **ConvBert** or **LaBSE** models and for those homograph sets that are sufficiently big and balanced.
+
 
 ## Transformer models
 
@@ -105,7 +114,7 @@ These are the results for just using the CLS token embeddings as classifier inpu
 
 The results above were retrieved via an older version of our training script and are not integrated into this
 repository. As can be seen, the BERT models LaBSE and Macocu-IS score top, whereas the specialized Icelandic BERT models
-fall behind. These would be the final results, if we'd just implemented the procedures of the cited paper.
+fall behind.
 
 By adding the homograph embeddings to the classifier's input features, the following results are obtained:
 
@@ -123,6 +132,9 @@ remarkable enhancement, with its F1 score increasing by `0.16`. This substantial
 for generating meaningful word embeddings, solidifying its position as a robust model for natural language processing
 tasks in Icelandic. Additionally, LaBSE proves to be a solid choice for multilingual purposes, including Icelandic text
 classification, due to its robust performance across many languages.
+
+In our experiments, by using only one classifier for all homographs, both embeddings are needed to achieve the above
+results, though most of these achievements is influenced by the homograph word embedding itself.
 
 ## Model training
 
@@ -171,7 +183,7 @@ can classify each line of a file. Results are printed on `stdout`.
 
 # Copyright, Citation
 
-Copyright (C) 2024, Grammatek ehf, licensed via the [APACHE License v2](LICENSE)
+Copyright (C) 2024, Grammatek ehf, licensed via APACHE License v2
 
 If you base any of your research or software on this repository, please consider citing.
 
