@@ -110,11 +110,11 @@ Best performer is marked in bold, the second best in italic; results are sorted 
 
 | Model                   | Accuracy balanced | Accuracy unbalanced | --around |
 |-------------------------|-------------------|---------------------|----------|
-| ConvBert                | **0,9477**        | **0,9239**          | 8        |
-| LaBSE                   | *0,9339*          | *0,9176*            | 10       |
-| Icelandic-ner-bert      | 0,8870            | 0,8367              | 10       |
-| sbert-ruquad            | 0,8708            | 0,8272              | 10       |
-| distilbert-base-uncased | 0,7701            | 0,6974              | 10       |
+| ConvBert                | **0.9477**        | **0.9239**          | 8        |
+| LaBSE                   | *0.9339*          | *0.9176*            | 10       |
+| Icelandic-ner-bert      | 0.8870            | 0.8367              | 10       |
+| sbert-ruquad            | 0.8708            | 0.8272              | 10       |
+| distilbert-base-uncased | 0.7701            | 0.6974              | 10       |
 
 In our experiments, by using only one classifier for all homographs, CLS and word embeddings are both needed to achieve
 the above results, though most of these are determined by the homograph word embedding features. Results for single
