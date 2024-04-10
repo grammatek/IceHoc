@@ -25,7 +25,7 @@ HOMOGRAPHS = \
          "villan", "villa", "villi", "villum", "villuna", "villunnar", "villunni", "villunum", "villurnar", "villur",
          "villu"]
 
-# extremely seldom and/or different UTF-8 encoding
+# extremely seldom and/or different UTF-8 encoding: not used
 EXTRA_HOMOGRAPHS = ["gallarnir", "göllunum", "böllum", "halló", "möllum"]
 
 

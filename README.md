@@ -47,7 +47,7 @@ were developed for BPE-based tokenizers.
 
 ## Training set, Training approach and performance measurement
 
-We are using a manually labelled dataset with 71 homograph word forms, generated from the Icelandic Gigaword Corpus
+We are using a manually labelled dataset with 73 homograph word forms, generated from the Icelandic Gigaword Corpus
 (IGC). The training set is made up of CSV files with 2 columns: a sentence from the IGC containing the homograph marked
 via `[[<homograph>]]` and a manually attached label `0`/`1` according to the 2 possible pronunciations of the homograph,
 separated by comma. The training set can be retrieved via
@@ -57,7 +57,7 @@ This dataset is highly unbalanced. Therefore, training is done only on the same 
 labels by sampling the same amount of labels. This reduced dataset is split 8-1-1 into train/validation/test set. Due
 to balancing and small amount of some homograph labels, we have skipped the following homographs:
 
-- "böllum", "gallanna", "gella", "halló", "möllum", "pollanna", "villanna"
+- "böllum", "gallanna", "gallarnir", "göllunum", "gella", "halló", "möllum", "pollanna", "villanna"
 
 Leaving us with 64 homographs for training.
 
@@ -123,7 +123,11 @@ improve the overall performance considerably. This is also necessary to be able 
 homographs are not classified at all due to lack of training data.
 
 ConvBert and LaBSE prove to be solid choices for Icelandic homograph classification, where the former performs best
-in our experiments and also consumes much less GPU memory than the latter. 
+in our experiments and also consumes much less GPU memory than the latter.
+
+Our best pretrained model with an accuracy of `0.927` on the unbalanced test set can be found in the directory
+`classifier/` for the ConvBert model with parameter `--around 8`. In the same directory, the file `clf_results.csv`
+contains detailed training statistics for each homograph.
 
 ## Model training
 
