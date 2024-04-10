@@ -20,7 +20,7 @@ To summarize our changes:
 - average all homograph word embeddings to one feature vector
 - additionally use the CLS token as feature vector and combine it with the homograph feature vector
 
-Using this approach, we achieve state-of-the-art results in homograph classification for Icelandic when combined with
+Using this approach, we achieve overall good results in homograph classification for Icelandic when combined with
 the **ConvBert** or **LaBSE** models and for those homograph sets that are sufficiently big and balanced.
 
 
@@ -47,14 +47,19 @@ were developed for BPE-based tokenizers.
 
 ## Training set, Training approach and performance measurement
 
-We are using a manually labelled dataset with 63 homograph word forms, generated from the Icelandic Gigaword Corpus
+We are using a manually labelled dataset with 71 homograph word forms, generated from the Icelandic Gigaword Corpus
 (IGC). The training set is made up of CSV files with 2 columns: a sentence from the IGC containing the homograph marked
 via `[[<homograph>]]` and a manually attached label `0`/`1` according to the 2 possible pronunciations of the homograph,
 separated by comma. The training set can be retrieved via
 [Google Drive](https://drive.google.com/drive/u/1/folders/1MIlq9RVlvuCB70K8nsHJNcLGGXlQqKeO)
 
 This dataset is highly unbalanced. Therefore, training is done only on the same amount of `1` labels as there are `0`
-labels by sampling the same amount of labels. This reduced dataset is split 8-1-1 into train/validation/test set.
+labels by sampling the same amount of labels. This reduced dataset is split 8-1-1 into train/validation/test set. Due
+to balancing and small amount of some homograph labels, we have skipped the following homographs:
+
+- "böllum", "gallanna", "gella", "halló", "möllum", "pollanna", "villanna"
+
+Leaving us with 64 homographs for training.
 
 All training code can be found in the file [hg_train.py](hg_train.py). The dataset is prepared according to the given
 `--around` parameter, then tokenized, embeddings are generated via the given BERT model from the tokenized text and
@@ -63,23 +68,23 @@ finally the CLS and homograph word embeddings are isolated to build combined cla
 As tokenization takes a lot of time, the results are cached into a file alongside the dataset directory, which is
 automatically loaded if it exists at training start. This file's name contains the BERT model name as well as the given
 value for `--around` for taking into account the distinct parameters. If you don't want to load this cached file and
-instead want the training script to recalculate the tokens, add `--force` as a parameter to the training script.
+instead want the training script to recalculate the tokens and embeddings, add `--force` as a parameter to the training
+script.
 
 For the classification process, the following parameters can be set. The defaults are shown in parentheses and have
 proven to give good results:
 
-- `N_EPOCHS` (50)
 - `BATCH_SIZE` (512)
-- `ALPHA` (0.001)
+- `N_EPOCHS` (600)
+- `ALPHA` (0.00006)
 - `TEST_SIZE` (0.1)
 - `VALIDATION_SIZE` (0.1)
 
-The F1 score is calculated at the end for the complete test set. If you specify the parameter `--histogram` F1 scores
-for each homograph individually are also calculated. 
+The accuracy score is calculated at the end for the balanced and unbalanced test sets.
 
-The training needs around 16GB VRAM memory on a GPU, additionally to the transformer model usage. Training on CPU is
-possible but prohibitively slow (with 32 cores - 20x slower than 1 GPU), because of the BERT embeddings generation.
-Training of the classifier itself with the pre-generated data is done on CPU and very fast.
+Training with the above settings needs around 16GB VRAM memory on one GPU, additionally to the transformer model usage.
+Training on CPU is possible but prohibitively slow (with 32 cores - 20x slower than 1 GPU), because of the BERT
+embeddings generation. Training of the classifier itself with the pre-generated data is done on CPU and relatively fast.
 
 ## Classifier model
 
@@ -95,46 +100,30 @@ classifier. The choice of the right transformer model influences the outcome muc
 around the homograph from e.g. 5 to 12 or simple hyperparameter tunings.
 
 The model `distilbert-base-uncased` was used as a reference point for a model that has probably not seen any Icelandic
-text, to get a feeling for a low baseline.
+text, to get a feeling for a low baseline. Besides `LaBSE`, which is a multilingual model, the other transformer models
+were specifically targeted for Icelandic. As mentioned above, the RoBERTa-based models could only be evaluated on their
+CLS-token embeddings and therefore have not been used for the final classification.
 
-Besides `LaBSE`, which is a multilingual model and `Macocu-IS`, which was fine-tuned from Multi Lingual
-`XLM-RoBERTa-Large`, the other transformer models were specifically targeted for Icelandic.
+The following table shows the accuracy for the different models over the balanced and unbalanced test sets and the
+corresponding `--around` parameter with the best result. Each accuracy value averaged over 5 runs.
+Best performer is marked in bold, the second best in italic; results are sorted in descending order:
 
-These are the results for just using the CLS token embeddings as classifier input:
+| Model                   | Accuracy balanced | Accuracy unbalanced | --around |
+|-------------------------|-------------------|---------------------|----------|
+| ConvBert                | **0,9477**        | **0,9239**          | 8        |
+| LaBSE                   | *0,9339*          | **0,9176**          | 10       |
+| Icelandic-ner-bert      | 0,8870            | 0,8367              | 10       |
+| sbert-ruquad            | 0,8708            | 0,8272              | 10       |
+| distilbert-base-uncased | 0,7701            | 0,6974              | 10       |
 
-| Model                   | F1 Score | --around |
-|-------------------------|----------|----------|
-| distilbert-base-uncased | 0.67     | 8        |
-| ConvBert                | 0.79     | 8        |
-| LaBSE                   | **0.85** | 8        |
-| IceBert                 | 0.80     | 8        |
-| Macocu-is               | 0.82     | 8        |
-| sbert-ruquad            | 0.76     | 8        |
-| Icelandic-ner-bert      | 0.78     | 8        |
+In our experiments, by using only one classifier for all homographs, CLS and word embeddings are both needed to achieve
+the above results, though most of these are determined by the homograph word embedding features. Results for single
+homographs are omitted here, but those suggest that adding more training data for the less frequent homographs would
+improve the overall performance considerably. This is also necessary to be able to classify all homographs, as some
+homographs are not classified at all due to lack of training data.
 
-The results above were retrieved via an older version of our training script and are not integrated into this
-repository. As can be seen, the BERT models LaBSE and Macocu-IS score top, whereas the specialized Icelandic BERT models
-fall behind.
-
-By adding the homograph embeddings to the classifier's input features, the following results are obtained:
-
-| Model                   | F1 Score  | --around |
-|-------------------------|-----------|----------|
-| distilbert-base-uncased | 0.754     | 8        |
-| ConvBert                | **0.950** | 10       |
-| ConvBert                | *0.942*   | 8        |
-| LaBSE                   | *0.935*   | 8        |
-| sbert-ruquad            | 0.865     | 8        |
-| Icelandic-ner-bert      | 0.889     | 8        |
-
-The outcomes exhibit a significant improvement across _all_ BERT model variants. Notably, ConvBert demonstrates a
-remarkable enhancement, with its F1 score increasing by `0.16`. This substantial increase underscores its enhanced capacity
-for generating meaningful word embeddings, solidifying its position as a robust model for natural language processing
-tasks in Icelandic. Additionally, LaBSE proves to be a solid choice for multilingual purposes, including Icelandic text
-classification, due to its robust performance across many languages.
-
-In our experiments, by using only one classifier for all homographs, both embeddings are needed to achieve the above
-results, though most of these achievements is influenced by the homograph word embedding itself.
+ConvBert and LaBSE prove to be solid choices for Icelandic homograph classification, where the former performs best
+in our experiments and also consumes much less GPU memory than the latter. 
 
 ## Model training
 
@@ -148,25 +137,28 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+We have successfully used Python versions 3.9 and 3.10.
+
 ### Training
 
 For training of the classifier, the Python script `hg_train.py` is used. It can be run with the following command line
 
 ```bash
-mkdir -p classifer/   # directory is not yet automatically created
-python3 hg_train.py --directory training_data/ --model convbert --gpu --around 10
+python3 hg_train.py --directory training_data/ --model convbert --gpu --around 10\
+            --output classifier/trained_clf_convbert_10
 ```
 
 The parameter values for training script stand for:
 
-- directory with training data in path `training_data/`
+- directory with training data in path `training_data/`, each homograph in a separate CSV/text file with the format
+  `sentence\tlabel`. Labels are marked as (0/1), corresponding to the two possible pronunciations of the homographs 'l'
+  and 'tl'
 - transformer model: `convbert`
 - use GPU
 - word context size: `10` tokens (counted via String split !) left and right from the found homograph. The token number
   might be less per direction in case the available number of tokens is less
 
-After training is finished, you can find the classifier model inside the directory `classifier`, e.g.
-`classifier/trained_clf_convbert_10_0.950.pkl`
+After training is finished, you can find the classifier model inside the directory `classifier/trained_clf_convbert_10`.
 
 ## Model inference
 

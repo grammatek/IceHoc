@@ -3,22 +3,18 @@ import pickle
 import re
 import time
 
-from transformers import AutoTokenizer, AutoModel
 import torch
-
-homographs = ["palli", "villa", "kalli", "galli", "galla", "gallar", "göllum", "gallinn", "gallann", "gallanum",
-              "gallans", "gallarnir", "gallana", "göllunum", "gallanna", "gulli", "halli", "ella", "elli", "holl",
-              "hollum", "bollum", "palla", "villu", "polli", "malla", "bolla", "kalla", "kolla", "pollar", "polla",
-              "kollu", "dalla", "halla", "bollunum", "villi", "ullar", "villunni", "ollu", "grilla", "villan", "gellur",
-              "lalla", "villuna", "holli", "holla", "böll", "gullu", "malli", "pollum", "pollinn", "dill", "villum",
-              "pollarnir", "villur", "pollana", "villunnar", "alla", "drolla", "mallar", "dillum", "grilli", "villurnar",
-              "villunum", "milli", "grillir", "lalli", "gulla", "gella"]
+import hg_core as hgc
 
 
 def find_homograph_positions_in_context(context, homograph, tokenizer, device):
     """
     Tokenizes the context, identifies the positions of the homograph tokens,
     and generates embeddings for classification.
+
+    @note:
+        This is only a rough implementation and may not work for all cases, especially with multiple times the same
+        tokens in one context ! In that case, we have too many position id's, not only the relevant ones.
     """
     encoded = tokenizer(context, return_tensors='pt', padding='max_length', truncation=True, max_length=512)
     input_ids = encoded['input_ids'].to(device)
@@ -72,49 +68,40 @@ def generate_combined_embeddings_for_classification(input_ids, attention_mask, p
 
 
 def classify_sentence_homographs(sentence, homographs, tokenizer, model, classifier, device, around):
+    """
+    Classifies the homographs in the sentence using the provided classifier.
+    This is only a rough implementation and may not work for all cases, especially with the same homographs in one
+    sentence !
+    """
+    # remove [[ and ]] from the sentence (e.g. if we test this on the training data)
+    sentence = re.sub(r'\[\[|]]', '', sentence)
     homograph_regex = '|'.join([f"(\\b{homograph}\\b)" for homograph in homographs])
     predictions = []
 
     for match in re.finditer(homograph_regex, sentence, re.IGNORECASE):
         homograph = match.group()
         context = get_context_around_homograph(sentence, homograph, around)
-        input_ids, attention_mask, positions = find_homograph_positions_in_context(context, homograph, tokenizer, device)
-        combined_embedding = generate_combined_embeddings_for_classification(input_ids, attention_mask, positions, model)
+        input_ids, attention_mask, positions = find_homograph_positions_in_context(context,
+                                                                                   homograph,
+                                                                                   tokenizer,
+                                                                                   device)
+        combined_embedding = generate_combined_embeddings_for_classification(input_ids,
+                                                                             attention_mask,
+                                                                             positions,
+                                                                             model)
         prediction = classifier.predict(combined_embedding)
         predictions.append((homograph, prediction[0]))
 
     return predictions
 
 
-def load_model_and_tokenizer(model, classifier_path, device):
-    if model == 'distilbert':
-        print("Loading DistilBERT model ...")
-        tokenizer = AutoTokenizer.from_pretrained('distilbert-base-uncased')
-        model = AutoModel.from_pretrained('distilbert-base-uncased').to(device)
-    elif model == 'sbert-ruquad':
-        print("Loading sbert-ruquad model ...")
-        tokenizer = AutoTokenizer.from_pretrained('language-and-voice-lab/sbert-ruquad')
-        model = AutoModel.from_pretrained('language-and-voice-lab/sbert-ruquad').to(device)
-    elif model == 'labse':
-        print("Loading LaBSE model ...")
-        tokenizer = AutoTokenizer.from_pretrained('setu4993/LaBSE')
-        model = AutoModel.from_pretrained('setu4993/LaBSE').to(device)
-    elif model == 'icelandic-ner-bert':
-        print("Loading icelandic-ner-bert model ...")
-        tokenizer = AutoTokenizer.from_pretrained('grammatek/icelandic-ner-bert')
-        model = AutoModel.from_pretrained('grammatek/icelandic-ner-bert').to(device)
-    elif model == 'convbert':
-        print("Loading convbert-base-igc-is model ...")
-        tokenizer = AutoTokenizer.from_pretrained('jonfd/convbert-base-igc-is')
-        model = AutoModel.from_pretrained('jonfd/convbert-base-igc-is').to(device)
-    else:
-        print(f"Unsupported model {model}")
-        exit(1)
-
+def load_models(model_name, classifier_path, device):
+    bert_model, bert_tokenizer = hgc.get_model_and_tokenizer(model_name)
+    bert_model = bert_model.to(device)
     with open(classifier_path, 'rb') as f:
         classifier = pickle.load(f)
 
-    return tokenizer, model, classifier
+    return bert_tokenizer, bert_model, classifier
 
 
 def main():
@@ -133,11 +120,11 @@ def main():
 
     # If GPU flag is set and torch sees a GPU, set device to cuda
     device = torch.device("cuda" if args.gpu and torch.cuda.is_available() else "cpu")
-    tokenizer, model, classifier = load_model_and_tokenizer(args.model, args.classifier, device)
+    tokenizer, model, classifier = load_models(args.model, args.classifier, device)
 
     if args.sentence:
         start_time = time.time()
-        predictions = classify_sentence_homographs(args.sentence, homographs, tokenizer, model, classifier, device,
+        predictions = classify_sentence_homographs(args.sentence, hgc.HOMOGRAPHS, tokenizer, model, classifier, device,
                                                    args.around)
         for homograph, prediction in predictions:
             print(f"Prediction for '{homograph}': {prediction}")
@@ -153,7 +140,7 @@ def main():
                 if not line:
                     continue
 
-                predictions = classify_sentence_homographs(line, homographs, tokenizer, model, classifier, device,
+                predictions = classify_sentence_homographs(line, hgc.HOMOGRAPHS, tokenizer, model, classifier, device,
                                                            args.around)
                 if predictions:
                     for homograph, prediction in predictions:
