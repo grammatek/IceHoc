@@ -50,8 +50,7 @@ were developed for BPE-based tokenizers.
 We are using a manually labelled dataset with 73 homograph word forms, generated from the Icelandic Gigaword Corpus
 (IGC). The training set is made up of CSV files with 2 columns: a sentence from the IGC containing the homograph marked
 via `[[<homograph>]]` and a manually attached label `0`/`1` according to the 2 possible pronunciations of the homograph,
-separated by comma. The training set can be retrieved via
-[Google Drive](https://drive.google.com/drive/u/1/folders/1MIlq9RVlvuCB70K8nsHJNcLGGXlQqKeO)
+separated by comma. The training set can be retrieved via [Clarin-IS Link](http://hdl.handle.net/20.500.12537/327)
 
 This dataset is highly unbalanced. Therefore, training is done only on the same amount of `1` labels as there are `0`
 labels by sampling the same amount of labels. This reduced dataset is split 8-1-1 into train/validation/test set. Due
